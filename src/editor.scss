@@ -1,0 +1,55 @@
+.map-author-card {
+	padding: 4px 0;
+
+	.map-author-avatar {
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.map-author-name {
+		font-size: 13px;
+	}
+}
+
+.map-suggestions {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	max-height: 200px;
+	overflow-y: auto;
+
+	.map-suggestion-item {
+		padding: 6px 8px;
+		border-bottom: 1px solid #eee;
+
+		&:last-child {
+			border-bottom: none;
+		}
+
+		img {
+			border-radius: 50%;
+			flex-shrink: 0;
+		}
+	}
+}
+
+.map-no-suggestions,
+.map-empty,
+.map-invite-description {
+	font-size: 12px;
+	color: #757575;
+	margin: 0;
+}
+
+.map-invite-section strong {
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #1e1e1e;
+}
+
+.map-direct-add .components-search-control {
+	margin-bottom: 4px;
+}

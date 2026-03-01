@@ -1,0 +1,133 @@
+<?php
+/**
+ * Co-authors storage and retrieval.
+ *
+ * @package MultiAuthorPosts
+ */
+
+namespace MultiAuthorPosts;
+
+/**
+ * Manages the list of co-authors stored against each post.
+ */
+class Co_Authors {
+
+	const META_KEY = '_map_co_authors';
+
+	/**
+	 * Register post meta on init.
+	 */
+	public static function init(): void {
+		add_action( 'init', array( __CLASS__, 'register_meta' ) );
+	}
+
+	/**
+	 * Register the co-authors post meta.
+	 */
+	public static function register_meta(): void {
+		register_post_meta(
+			'',
+			self::META_KEY,
+			array(
+				'type'          => 'array',
+				'description'   => 'Co-author user IDs for this post.',
+				'single'        => true,
+				'default'       => array(),
+				'show_in_rest'  => false,
+				'auth_callback' => function ( $allowed, $meta_key, $post_id ) {
+					return current_user_can( 'edit_post', $post_id );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Return the list of co-author user IDs for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return int[]
+	 */
+	public static function get_co_authors( int $post_id ): array {
+		$value = get_post_meta( $post_id, self::META_KEY, true );
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+		return array_map( 'intval', $value );
+	}
+
+	/**
+	 * Add a user as a co-author of a post.
+	 *
+	 * No-ops silently if the user is already the post author or already a co-author.
+	 *
+	 * @param int $post_id Post ID.
+	 * @param int $user_id User ID.
+	 * @return bool Whether the operation succeeded.
+	 */
+	public static function add_co_author( int $post_id, int $user_id ): bool {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return false;
+		}
+
+		// The post's original author never needs to be stored as a co-author.
+		if ( (int) $post->post_author === $user_id ) {
+			return true;
+		}
+
+		$co_authors = self::get_co_authors( $post_id );
+
+		if ( in_array( $user_id, $co_authors, true ) ) {
+			return true;
+		}
+
+		$co_authors[] = $user_id;
+		return (bool) update_post_meta( $post_id, self::META_KEY, $co_authors );
+	}
+
+	/**
+	 * Remove a user from the co-author list of a post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @param int $user_id User ID.
+	 * @return bool Whether the operation succeeded.
+	 */
+	public static function remove_co_author( int $post_id, int $user_id ): bool {
+		$co_authors = self::get_co_authors( $post_id );
+		$filtered   = array_values( array_filter( $co_authors, fn( $id ) => $id !== $user_id ) );
+		return (bool) update_post_meta( $post_id, self::META_KEY, $filtered );
+	}
+
+	/**
+	 * Check whether a user is a co-author of a post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @param int $user_id User ID.
+	 * @return bool
+	 */
+	public static function is_co_author( int $post_id, int $user_id ): bool {
+		return in_array( $user_id, self::get_co_authors( $post_id ), true );
+	}
+
+	/**
+	 * Return enriched co-author data (id, name, avatar) for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array<int, array{id:int,name:string,avatar:string}>
+	 */
+	public static function get_co_author_data( int $post_id ): array {
+		$result = array();
+		foreach ( self::get_co_authors( $post_id ) as $user_id ) {
+			$user = get_userdata( $user_id );
+			if ( ! $user ) {
+				continue;
+			}
+			$result[] = array(
+				'id'     => $user->ID,
+				'name'   => $user->display_name,
+				'avatar' => get_avatar_url( $user->ID, array( 'size' => 48 ) ),
+			);
+		}
+		return $result;
+	}
+}

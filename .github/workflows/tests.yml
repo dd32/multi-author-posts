@@ -1,0 +1,67 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - 'copilot/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JavaScript unit tests (Jest, no Docker needed)
+  # ---------------------------------------------------------------------------
+  js-tests:
+    name: JS Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run JS unit tests
+        run: npm run test:unit
+
+  # ---------------------------------------------------------------------------
+  # PHP unit tests — run inside wp-env (Docker)
+  # ---------------------------------------------------------------------------
+  php-tests:
+    name: PHP Unit Tests (wp-env)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start wp-env
+        run: npx wp-env start
+        env:
+          # wp-env pulls Docker images; increase timeout for CI.
+          WP_ENV_LIFECYCLE_TIMEOUT: 300
+
+      - name: Run PHP tests via wp-env
+        run: npx wp-env run tests-cli phpunit
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop

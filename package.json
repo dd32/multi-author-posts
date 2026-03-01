@@ -1,0 +1,33 @@
+{
+	"name": "multi-author-posts",
+	"version": "1.0.0",
+	"description": "Allow multiple authors to edit a single WordPress post via shareable invite links.",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"scripts": {
+		"build": "wp-scripts build",
+		"start": "wp-scripts start",
+		"test:unit": "wp-scripts test-unit-js --testPathPattern=tests/js",
+		"test:php": "wp-env run tests-cli phpunit",
+		"test": "npm run test:unit && npm run test:php",
+		"env:start": "wp-env start",
+		"env:stop": "wp-env stop",
+		"lint:js": "wp-scripts lint-js",
+		"lint:style": "wp-scripts lint-style"
+	},
+	"devDependencies": {
+		"@testing-library/jest-dom": "^6.0.0",
+		"@testing-library/react": "^16.0.0",
+		"@testing-library/user-event": "^14.0.0",
+		"@wordpress/api-fetch": "*",
+		"@wordpress/components": "*",
+		"@wordpress/core-data": "*",
+		"@wordpress/data": "*",
+		"@wordpress/editor": "*",
+		"@wordpress/element": "*",
+		"@wordpress/env": "^10.0.0",
+		"@wordpress/i18n": "*",
+		"@wordpress/plugins": "*",
+		"@wordpress/scripts": "^30.0.0"
+	}
+}
