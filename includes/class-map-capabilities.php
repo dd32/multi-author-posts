@@ -35,7 +35,7 @@ class Capabilities {
 	 */
 	public static function handle_co_author_caps( array $caps, string $cap, int $user_id, array $args ): array {
 		// Only intercept post-specific capabilities (not delete_post).
-		if ( ! in_array( $cap, array( 'edit_post', 'read_post', 'collab_edit_post' ), true ) ) {
+		if ( ! in_array( $cap, array( 'edit_post', 'read_post' ), true ) ) {
 			return $caps;
 		}
 
