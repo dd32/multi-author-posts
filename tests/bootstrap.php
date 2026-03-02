@@ -6,6 +6,12 @@
  * WordPress test helpers are installed at /tmp/wordpress-tests-lib.
  */
 
+// Load Composer autoloader (provides PHPUnit Polyfills for the WP test suite).
+$_autoloader = dirname( __DIR__ ) . '/vendor/autoload.php';
+if ( file_exists( $_autoloader ) ) {
+	require_once $_autoloader;
+}
+
 $_tests_dir = getenv( 'WP_TESTS_DIR' );
 if ( ! $_tests_dir ) {
 	$_tests_dir = '/tmp/wordpress-tests-lib';
