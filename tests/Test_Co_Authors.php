@@ -81,6 +81,21 @@ class Test_Co_Authors extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'avatar', $data[0] );
 	}
 
+	public function test_previous_author_becomes_co_author_on_author_change(): void {
+		Co_Authors::init();
+
+		$author_b = self::factory()->user->create( array( 'role' => 'author' ) );
+
+		wp_update_post(
+			array(
+				'ID'          => $this->post_id,
+				'post_author' => $author_b,
+			)
+		);
+
+		$this->assertTrue( Co_Authors::is_co_author( $this->post_id, $this->author_id ) );
+	}
+
 	public function test_multiple_co_authors(): void {
 		$second_user = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		Co_Authors::add_co_author( $this->post_id, $this->user_id );

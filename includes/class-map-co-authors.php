@@ -19,6 +19,7 @@ class Co_Authors {
 	 */
 	public static function init(): void {
 		add_action( 'init', array( __CLASS__, 'register_meta' ) );
+		add_action( 'post_updated', array( __CLASS__, 'preserve_previous_author' ), 10, 3 );
 	}
 
 	/**
@@ -129,5 +130,18 @@ class Co_Authors {
 			);
 		}
 		return $result;
+	}
+
+	/**
+	 * When post authorship changes, preserve the previous author as a co-author.
+	 *
+	 * @param int      $post_id     Post ID.
+	 * @param \WP_Post $post_after  Post object after the update.
+	 * @param \WP_Post $post_before Post object before the update.
+	 */
+	public static function preserve_previous_author( int $post_id, \WP_Post $post_after, \WP_Post $post_before ): void {
+		if ( (int) $post_before->post_author !== (int) $post_after->post_author ) {
+			self::add_co_author( $post_id, (int) $post_before->post_author );
+		}
 	}
 }
