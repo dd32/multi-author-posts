@@ -2,8 +2,8 @@
 /**
  * PHPUnit bootstrap for Multi-Author Posts tests.
  *
- * Expects to run inside the wp-env tests-cli container where
- * WordPress test helpers are installed at /tmp/wordpress-tests-lib.
+ * Expects to run inside a wp-env container where WordPress test helpers
+ * are available.
  */
 
 // Load Composer autoloader (provides PHPUnit Polyfills for the WP test suite).
@@ -14,12 +14,18 @@ if ( file_exists( $_autoloader ) ) {
 
 $_tests_dir = getenv( 'WP_TESTS_DIR' );
 if ( ! $_tests_dir ) {
-	$_tests_dir = '/tmp/wordpress-tests-lib';
+	// wp-env v11+ uses /wordpress-phpunit; older versions use /tmp/wordpress-tests-lib.
+	foreach ( array( '/wordpress-phpunit', '/tmp/wordpress-tests-lib' ) as $_candidate ) {
+		if ( file_exists( $_candidate . '/includes/functions.php' ) ) {
+			$_tests_dir = $_candidate;
+			break;
+		}
+	}
 }
 
-if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
-	echo 'Could not find WordPress test library at: ' . $_tests_dir . PHP_EOL;
-	echo 'Make sure WP_TESTS_DIR is set or run tests via: npx wp-env run tests-cli phpunit' . PHP_EOL;
+if ( ! $_tests_dir || ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
+	echo 'Could not find WordPress test library.' . PHP_EOL;
+	echo 'Make sure WP_TESTS_DIR is set or run tests via: npx wp-env run cli phpunit' . PHP_EOL;
 	exit( 1 );
 }
 
