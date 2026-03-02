@@ -65,6 +65,7 @@ function DirectAdd( { postId, existingIds, onAdd } ) {
 	useEffect( () => {
 		if ( search.length < 2 ) {
 			setSuggestions( [] );
+			setIsSearching( false );
 			return;
 		}
 		setIsSearching( true );
@@ -118,7 +119,7 @@ function DirectAdd( { postId, existingIds, onAdd } ) {
 										width={ 28 }
 										height={ 28 }
 									/>
-									<TextHighlight text={ user.name } highlight={ search } />
+									<span><TextHighlight text={ user.name } highlight={ search } /></span>
 								</HStack>
 								<Button
 									variant="secondary"
