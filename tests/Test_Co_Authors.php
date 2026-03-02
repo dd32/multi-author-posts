@@ -30,6 +30,11 @@ class Test_Co_Authors extends WP_UnitTestCase {
 		$this->assertSame( array(), Co_Authors::get_co_authors( $this->post_id ) );
 	}
 
+	public function test_add_co_author_rejects_nonexistent_user(): void {
+		$this->assertFalse( Co_Authors::add_co_author( $this->post_id, 999999 ) );
+		$this->assertNotContains( 999999, Co_Authors::get_co_authors( $this->post_id ) );
+	}
+
 	public function test_add_co_author_returns_true(): void {
 		$this->assertTrue( Co_Authors::add_co_author( $this->post_id, $this->user_id ) );
 	}

@@ -71,6 +71,10 @@ class Co_Authors {
 			return false;
 		}
 
+		if ( ! get_userdata( $user_id ) ) {
+			return false;
+		}
+
 		// The post's original author never needs to be stored as a co-author.
 		if ( (int) $post->post_author === $user_id ) {
 			return true;
