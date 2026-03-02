@@ -68,7 +68,7 @@ jobs:
           WP_ENV_LIFECYCLE_TIMEOUT: 300
 
       - name: Run PHP tests via wp-env
-        run: npx wp-env run tests-cli phpunit
+        run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/multi-author-posts phpunit
 
       - name: Stop wp-env
         if: always()
