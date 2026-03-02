@@ -223,18 +223,19 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$this->assertNotContains( $target, $ids );
 	}
 
-	public function test_suggested_authors_searches_by_email_for_editors(): void {
+	public function test_suggested_authors_searches_by_email_for_admins(): void {
+		$admin  = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		$target = self::factory()->user->create(
 			array(
 				'role'         => 'author',
-				'user_email'   => 'editor-findable@example.com',
+				'user_email'   => 'admin-findable@example.com',
 				'display_name' => 'Hidden Name',
 			)
 		);
-		wp_set_current_user( $this->editor_id );
+		wp_set_current_user( $admin );
 
 		$request = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/suggested-authors' );
-		$request->set_param( 'search', 'editor-findable' );
+		$request->set_param( 'search', 'admin-findable' );
 		$response = rest_get_server()->dispatch( $request );
 
 		$ids = array_column( $response->get_data(), 'id' );
