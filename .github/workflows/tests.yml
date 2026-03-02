@@ -26,10 +26,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No cache — lock file is not committed.
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Run JS unit tests
         run: npm run test:unit
@@ -55,10 +55,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No cache — lock file is not committed.
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Override PHP version
         run: |
@@ -71,10 +71,10 @@ jobs:
           WP_ENV_LIFECYCLE_TIMEOUT: 300
 
       - name: Install Composer dependencies
-        run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/multi-author-posts -- composer install --no-interaction
+        run: npx wp-env run cli --env-cwd=wp-content/plugins/multi-author-posts -- composer install --no-interaction
 
       - name: Run PHP tests via wp-env
-        run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/multi-author-posts -- vendor/bin/phpunit
+        run: npx wp-env run cli --env-cwd=wp-content/plugins/multi-author-posts -- vendor/bin/phpunit
 
       - name: Stop wp-env
         if: always()

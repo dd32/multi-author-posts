@@ -2,4 +2,6 @@ node_modules/
 vendor/
 build/
 *.log
+package-lock.json
+composer.lock
 .wp-env.override.json
