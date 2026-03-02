@@ -292,8 +292,15 @@ class Rest_API {
 	 * @return \WP_REST_Response
 	 */
 	public static function get_suggested_authors( \WP_REST_Request $request ): \WP_REST_Response {
-		$post_id        = (int) $request->get_param( 'post_id' );
-		$search         = (string) $request->get_param( 'search' );
+		$post_id = (int) $request->get_param( 'post_id' );
+		$search  = (string) $request->get_param( 'search' );
+
+		// Require a minimum search length to prevent user enumeration.
+		// On large networks, a search term is always required.
+		if ( mb_strlen( $search ) < 2 ) {
+			return new \WP_REST_Response( array(), 200 );
+		}
+
 		$post           = get_post( $post_id );
 		$existing_ids   = Co_Authors::get_co_authors( $post_id );
 		$existing_ids[] = (int) $post->post_author;
@@ -302,12 +309,9 @@ class Rest_API {
 			'capability'     => array( 'edit_posts' ),
 			'number'         => 20,
 			'exclude'        => $existing_ids,
-			'search_columns' => array( 'user_login', 'user_nicename', 'user_email', 'display_name' ),
+			'search'         => '*' . $search . '*',
+			'search_columns' => array( 'user_login', 'user_nicename', 'display_name' ),
 		);
-
-		if ( '' !== $search ) {
-			$args['search'] = '*' . $search . '*';
-		}
 
 		$users  = get_users( $args );
 		$result = array();
