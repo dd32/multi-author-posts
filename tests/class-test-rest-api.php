@@ -64,7 +64,7 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$request  = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/co-authors' );
 		$response = rest_get_server()->dispatch( $request );
 
-		$this->assertSame( 401, $response->get_status() );
+		$this->assertSame( 403, $response->get_status() );
 	}
 
 	// -------------------------------------------------------------------------
