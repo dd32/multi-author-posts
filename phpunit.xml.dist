@@ -9,6 +9,7 @@
 		<testsuite name="php">
 			<directory suffix=".php">tests</directory>
 			<exclude>tests/js</exclude>
+			<exclude>tests/bootstrap.php</exclude>
 		</testsuite>
 	</testsuites>
 </phpunit>
