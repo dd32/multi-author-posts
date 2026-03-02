@@ -180,6 +180,85 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$this->assertSame( 403, $response->get_status() );
 	}
 
+	// -------------------------------------------------------------------------
+	// Suggested authors
+	// -------------------------------------------------------------------------
+
+	public function test_suggested_authors_returns_empty_for_short_search(): void {
+		wp_set_current_user( $this->author_id );
+
+		$request = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/suggested-authors' );
+		$request->set_param( 'search', 'a' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( array(), $response->get_data() );
+	}
+
+	public function test_suggested_authors_returns_empty_for_empty_search(): void {
+		wp_set_current_user( $this->author_id );
+
+		$request = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/suggested-authors' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( array(), $response->get_data() );
+	}
+
+	public function test_suggested_authors_does_not_search_by_email_for_authors(): void {
+		$target = self::factory()->user->create(
+			array(
+				'role'         => 'author',
+				'user_email'   => 'unique-test-email@example.com',
+				'display_name' => 'Test Target',
+			)
+		);
+		wp_set_current_user( $this->author_id );
+
+		$request = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/suggested-authors' );
+		$request->set_param( 'search', 'unique-test-email' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$ids = array_column( $response->get_data(), 'id' );
+		$this->assertNotContains( $target, $ids );
+	}
+
+	public function test_suggested_authors_searches_by_email_for_admins(): void {
+		$admin  = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$target = self::factory()->user->create(
+			array(
+				'role'         => 'author',
+				'user_email'   => 'admin-findable@example.com',
+				'display_name' => 'Hidden Name',
+			)
+		);
+		wp_set_current_user( $admin );
+
+		$request = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/suggested-authors' );
+		$request->set_param( 'search', 'admin-findable' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$ids = array_column( $response->get_data(), 'id' );
+		$this->assertContains( $target, $ids );
+	}
+
+	public function test_suggested_authors_returns_results_for_valid_search(): void {
+		$target = self::factory()->user->create(
+			array(
+				'role'         => 'author',
+				'display_name' => 'Searchable Author',
+			)
+		);
+		wp_set_current_user( $this->author_id );
+
+		$request = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/suggested-authors' );
+		$request->set_param( 'search', 'Searchable' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$ids = array_column( $response->get_data(), 'id' );
+		$this->assertContains( $target, $ids );
+	}
+
 	public function test_editor_can_manage_co_authors_via_edit_others_posts(): void {
 		// An editor (who has edit_others_posts) can manage co-authors even
 		// though they are not the post author.

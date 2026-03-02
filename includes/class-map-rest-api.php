@@ -292,22 +292,38 @@ class Rest_API {
 	 * @return \WP_REST_Response
 	 */
 	public static function get_suggested_authors( \WP_REST_Request $request ): \WP_REST_Response {
-		$post_id        = (int) $request->get_param( 'post_id' );
-		$search         = (string) $request->get_param( 'search' );
+		$post_id = (int) $request->get_param( 'post_id' );
+		$search  = (string) $request->get_param( 'search' );
+
+		// Require a minimum search length to prevent user enumeration.
+		// On large networks, require a longer search term to limit scope.
+		$is_large_network = function_exists( 'wp_is_large_network' ) && \wp_is_large_network( 'users' );
+		$min_length       = $is_large_network ? 5 : 2;
+		if ( mb_strlen( $search ) < $min_length ) {
+			return new \WP_REST_Response( array(), 200 );
+		}
+
 		$post           = get_post( $post_id );
 		$existing_ids   = Co_Authors::get_co_authors( $post_id );
 		$existing_ids[] = (int) $post->post_author;
+
+		// On large networks, restrict to indexed columns only for performance.
+		// Allow email search only for users who can already view user details.
+		$search_columns = $is_large_network
+			? array( 'user_login', 'user_nicename' )
+			: array( 'user_login', 'user_nicename', 'display_name' );
+
+		if ( current_user_can( 'list_users' ) ) {
+			$search_columns[] = 'user_email';
+		}
 
 		$args = array(
 			'capability'     => array( 'edit_posts' ),
 			'number'         => 20,
 			'exclude'        => $existing_ids,
-			'search_columns' => array( 'user_login', 'user_nicename', 'user_email', 'display_name' ),
+			'search'         => '*' . $search . '*',
+			'search_columns' => $search_columns,
 		);
-
-		if ( '' !== $search ) {
-			$args['search'] = '*' . $search . '*';
-		}
 
 		$users  = get_users( $args );
 		$result = array();
