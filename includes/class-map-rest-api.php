@@ -308,9 +308,14 @@ class Rest_API {
 		$existing_ids[] = (int) $post->post_author;
 
 		// On large networks, restrict to indexed columns only for performance.
+		// Allow email search only for users who can already view user details.
 		$search_columns = $is_large_network
 			? array( 'user_login', 'user_nicename' )
 			: array( 'user_login', 'user_nicename', 'display_name' );
+
+		if ( current_user_can( 'list_users' ) ) {
+			$search_columns[] = 'user_email';
+		}
 
 		$args = array(
 			'capability'     => array( 'edit_posts' ),
