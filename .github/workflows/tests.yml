@@ -3,11 +3,11 @@ name: Tests
 on:
   push:
     branches:
-      - main
+      - trunk
       - 'copilot/**'
   pull_request:
     branches:
-      - main
+      - trunk
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -37,10 +37,14 @@ jobs:
   # PHP unit tests — run inside wp-env (Docker)
   # ---------------------------------------------------------------------------
   php-tests:
-    name: PHP Unit Tests (wp-env)
+    name: "PHP ${{ matrix.php }} Tests (wp-env)"
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +56,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Override PHP version
+        run: |
+          echo '{ "phpVersion": "${{ matrix.php }}" }' > .wp-env.override.json
 
       - name: Start wp-env
         run: npx wp-env start
