@@ -297,7 +297,8 @@ class Rest_API {
 
 		// Require a minimum search length to prevent user enumeration.
 		// On large networks, require a longer search term to limit scope.
-		$min_length = function_exists( 'wp_is_large_network' ) && \wp_is_large_network( 'users' ) ? 5 : 2;
+		$is_large_network = function_exists( 'wp_is_large_network' ) && \wp_is_large_network( 'users' );
+		$min_length       = $is_large_network ? 5 : 2;
 		if ( mb_strlen( $search ) < $min_length ) {
 			return new \WP_REST_Response( array(), 200 );
 		}
@@ -306,12 +307,17 @@ class Rest_API {
 		$existing_ids   = Co_Authors::get_co_authors( $post_id );
 		$existing_ids[] = (int) $post->post_author;
 
+		// On large networks, restrict to indexed columns only for performance.
+		$search_columns = $is_large_network
+			? array( 'user_login', 'user_nicename' )
+			: array( 'user_login', 'user_nicename', 'display_name' );
+
 		$args = array(
 			'capability'     => array( 'edit_posts' ),
 			'number'         => 20,
 			'exclude'        => $existing_ids,
 			'search'         => '*' . $search . '*',
-			'search_columns' => array( 'user_login', 'user_nicename', 'display_name' ),
+			'search_columns' => $search_columns,
 		);
 
 		$users  = get_users( $args );
