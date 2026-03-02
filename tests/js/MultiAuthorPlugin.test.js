@@ -1,5 +1,5 @@
 /**
- * Unit tests for CoAuthorsPlugin component.
+ * Unit tests for MultiAuthorPlugin component.
  *
  * Modules that call into WordPress APIs are mocked so the component
  * can be tested without a running WordPress instance.
@@ -7,7 +7,7 @@
 
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CoAuthorsPlugin from '../../src/components/CoAuthorsPlugin';
+import MultiAuthorPlugin from '../../src/components/MultiAuthorPlugin';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -59,7 +59,7 @@ function setupUseSelect( { currentUserId = AUTHOR_ID, postAuthorId = AUTHOR_ID }
 // Tests
 // ---------------------------------------------------------------------------
 
-describe( 'CoAuthorsPlugin', () => {
+describe( 'MultiAuthorPlugin', () => {
 	beforeEach( () => {
 		setupUseSelect();
 		// Default: empty co-authors list, no invite URL.
@@ -74,14 +74,14 @@ describe( 'CoAuthorsPlugin', () => {
 	afterEach( () => jest.clearAllMocks() );
 
 	it( 'renders the Co-Authors panel heading', async () => {
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect( screen.getByRole( 'heading', { name: /co-authors/i } ) ).toBeInTheDocument()
 		);
 	} );
 
 	it( 'shows "No co-authors yet" when the list is empty', async () => {
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect( screen.getByText( /no co-authors yet/i ) ).toBeInTheDocument()
 		);
@@ -93,14 +93,14 @@ describe( 'CoAuthorsPlugin', () => {
 			return Promise.resolve( [ CO_AUTHOR ] );
 		} );
 
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect( screen.getByText( 'Jane Doe' ) ).toBeInTheDocument()
 		);
 	} );
 
 	it( 'shows "Generate invite link" button when the author has no active invite', async () => {
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect(
 				screen.getByRole( 'button', { name: /generate invite link/i } )
@@ -116,7 +116,7 @@ describe( 'CoAuthorsPlugin', () => {
 			return Promise.resolve( [] );
 		} );
 
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect(
 				screen.getByDisplayValue( 'http://example.com/?map_invite=abc123' )
@@ -127,7 +127,7 @@ describe( 'CoAuthorsPlugin', () => {
 	it( 'hides management controls for a co-author (non-author) user', async () => {
 		setupUseSelect( { currentUserId: 99, postAuthorId: AUTHOR_ID } );
 
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			// Co-authors list loads
 			expect( screen.queryByText( /no co-authors yet/i ) ).toBeInTheDocument()
@@ -145,7 +145,7 @@ describe( 'CoAuthorsPlugin', () => {
 		} );
 
 		const user = userEvent.setup();
-		render( <CoAuthorsPlugin /> );
+		render( <MultiAuthorPlugin /> );
 
 		await waitFor( () =>
 			expect( screen.getByText( 'Jane Doe' ) ).toBeInTheDocument()

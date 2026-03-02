@@ -234,7 +234,7 @@ function InviteSection( { postId } ) {
 /**
  * Main plugin component — registers the "Co-Authors" document settings panel.
  */
-export default function CoAuthorsPlugin() {
+export default function MultiAuthorPlugin() {
 	const postId = useSelect( ( select ) =>
 		select( editorStore ).getCurrentPostId()
 	);

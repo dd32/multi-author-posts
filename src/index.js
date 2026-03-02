@@ -1,7 +1,7 @@
 import { registerPlugin } from '@wordpress/plugins';
-import CoAuthorsPlugin from './components/CoAuthorsPlugin';
+import MultiAuthorPlugin from './components/MultiAuthorPlugin';
 
 registerPlugin( 'multi-author-posts', {
-	render: CoAuthorsPlugin,
+	render: MultiAuthorPlugin,
 	icon: 'groups',
 } );
