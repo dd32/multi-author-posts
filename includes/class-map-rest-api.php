@@ -297,7 +297,7 @@ class Rest_API {
 
 		// Require a minimum search length to prevent user enumeration.
 		// On large networks, require a longer search term to limit scope.
-		$min_length = wp_is_large_network( 'users' ) ? 5 : 2;
+		$min_length = \wp_is_large_network( 'users' ) ? 5 : 2;
 		if ( mb_strlen( $search ) < $min_length ) {
 			return new \WP_REST_Response( array(), 200 );
 		}
