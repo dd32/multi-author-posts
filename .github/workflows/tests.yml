@@ -26,10 +26,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No cache — lock file is not committed.
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run JS unit tests
         run: npm run test:unit
@@ -53,10 +53,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No cache — lock file is not committed.
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Override PHP version
         run: |

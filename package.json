@@ -4,6 +4,9 @@
 	"description": "Allow multiple authors to edit a single WordPress post via shareable invite links.",
 	"license": "GPL-2.0-or-later",
 	"private": true,
+	"engines": {
+		"node": ">=20"
+	},
 	"scripts": {
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
@@ -25,7 +28,7 @@
 		"@wordpress/data": "*",
 		"@wordpress/editor": "*",
 		"@wordpress/element": "*",
-		"@wordpress/env": "^10.0.0",
+		"@wordpress/env": "^11.0.0",
 		"@wordpress/i18n": "*",
 		"@wordpress/plugins": "*",
 		"@wordpress/scripts": "^30.0.0"
