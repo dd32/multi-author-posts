@@ -57,7 +57,7 @@ function AuthorCard( { author, canManage, onRemove } ) {
 /**
  * User search + direct-add UI (shown only when the current user can manage co-authors).
  */
-function DirectAdd( { postId, existingIds, onAdd } ) {
+function DirectAdd( { postId, onAdd } ) {
 	const [ search, setSearch ] = useState( '' );
 	const [ suggestions, setSuggestions ] = useState( [] );
 	const [ isSearching, setIsSearching ] = useState( false );
@@ -146,14 +146,16 @@ function DirectAdd( { postId, existingIds, onAdd } ) {
  * Invite-link section (shown only when the current user can manage co-authors).
  */
 function InviteSection( { postId } ) {
+	// Plaintext URL is only available in-memory, immediately after creation.
 	const [ inviteUrl, setInviteUrl ] = useState( null );
+	const [ isActive, setIsActive ] = useState( false );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ copied, setCopied ] = useState( false );
 
 	useEffect( () => {
 		apiFetch( { path: `${ NAMESPACE }/posts/${ postId }/invite` } )
 			.then( ( data ) => {
-				setInviteUrl( data?.invite_url ?? null );
+				setIsActive( !! data?.active );
 				setIsLoading( false );
 			} )
 			.catch( () => setIsLoading( false ) );
@@ -166,6 +168,7 @@ function InviteSection( { postId } ) {
 			method: 'POST',
 		} ).then( ( data ) => {
 			setInviteUrl( data?.invite_url ?? null );
+			setIsActive( !! data?.invite_url );
 			setIsLoading( false );
 		} );
 	}, [ postId ] );
@@ -177,6 +180,7 @@ function InviteSection( { postId } ) {
 			method: 'DELETE',
 		} ).then( () => {
 			setInviteUrl( null );
+			setIsActive( false );
 			setIsLoading( false );
 		} );
 	}, [ postId ] );
@@ -196,15 +200,11 @@ function InviteSection( { postId } ) {
 			<strong>{ __( 'Shared invite link', 'multi-author-posts' ) }</strong>
 			<p className="map-invite-description">
 				{ __(
-					'Anyone with this link who is registered on the network can join as a co-author.',
+					'Anyone with this link who is registered on the network can join as a co-author. The link is valid for 24 hours and is only shown once — copy it now.',
 					'multi-author-posts'
 				) }
 			</p>
-			{ ! inviteUrl ? (
-				<Button variant="secondary" onClick={ handleGenerate }>
-					{ __( 'Generate invite link', 'multi-author-posts' ) }
-				</Button>
-			) : (
+			{ inviteUrl && (
 				<VStack spacing={ 2 }>
 					<TextControl
 						label={ __( 'Invite link', 'multi-author-posts' ) }
@@ -218,16 +218,26 @@ function InviteSection( { postId } ) {
 								? __( 'Copied!', 'multi-author-posts' )
 								: __( 'Copy link', 'multi-author-posts' ) }
 						</Button>
-						<Button
-							variant="tertiary"
-							isDestructive
-							onClick={ handleRevoke }
-						>
-							{ __( 'Revoke', 'multi-author-posts' ) }
-						</Button>
 					</HStack>
 				</VStack>
 			) }
+			{ ! inviteUrl && isActive && (
+				<p className="map-invite-active">
+					{ __( 'An invite link is active. Regenerate to issue a new one (the previous link will stop working) or revoke it.', 'multi-author-posts' ) }
+				</p>
+			) }
+			<HStack justify="flex-start" spacing={ 2 }>
+				<Button variant="secondary" onClick={ handleGenerate }>
+					{ isActive
+						? __( 'Regenerate invite link', 'multi-author-posts' )
+						: __( 'Generate invite link', 'multi-author-posts' ) }
+				</Button>
+				{ isActive && (
+					<Button variant="tertiary" isDestructive onClick={ handleRevoke }>
+						{ __( 'Revoke', 'multi-author-posts' ) }
+					</Button>
+				) }
+			</HStack>
 		</VStack>
 	);
 }
@@ -246,16 +256,17 @@ export default function MultiAuthorPlugin() {
 		( select ) => select( coreStore ).getCurrentUser()?.id
 	);
 
-	// Management controls are shown to the post's original author only.
-	// The REST API enforces the same rule server-side.
-	const canManage =
-		!! currentUserId &&
-		!! postAuthorId &&
-		currentUserId === postAuthorId;
-
 	const [ coAuthors, setCoAuthors ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ error, setError ] = useState( null );
+
+	// Post author and any existing co-author share the same management trust.
+	// The REST API enforces the same rule server-side.
+	const canManage =
+		!! currentUserId && (
+			currentUserId === postAuthorId ||
+			coAuthors.some( ( a ) => a.id === currentUserId )
+		);
 
 	useEffect( () => {
 		if ( ! postId ) return;
@@ -338,7 +349,6 @@ export default function MultiAuthorPlugin() {
 						<>
 							<DirectAdd
 								postId={ postId }
-								existingIds={ coAuthors.map( ( a ) => a.id ) }
 								onAdd={ setCoAuthors }
 							/>
 							<InviteSection postId={ postId } />

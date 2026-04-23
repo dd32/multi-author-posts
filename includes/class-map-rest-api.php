@@ -15,9 +15,9 @@ namespace MultiAuthorPosts;
  * GET    /posts/<id>/co-authors              List co-authors (edit_post required)
  * POST   /posts/<id>/co-authors              Add an existing site author directly
  * DELETE /posts/<id>/co-authors/<user_id>    Remove a co-author (post author / admin only)
- * GET    /posts/<id>/invite                  Return current shared invite URL (post author / admin only)
- * POST   /posts/<id>/invite                  Generate / refresh invite URL (post author / admin only)
- * DELETE /posts/<id>/invite                  Revoke invite URL (post author / admin only)
+ * GET    /posts/<id>/invite                  Return whether a shared invite is active (manage caps required)
+ * POST   /posts/<id>/invite                  Generate / refresh invite URL — plaintext returned once (manage caps required)
+ * DELETE /posts/<id>/invite                  Revoke invite URL (manage caps required)
  */
 class Rest_API {
 
@@ -57,7 +57,6 @@ class Rest_API {
 								'type'              => 'integer',
 								'required'          => true,
 								'sanitize_callback' => 'absint',
-								'validate_callback' => fn( $v ) => is_numeric( $v ) && $v > 0,
 							),
 						)
 					),
@@ -163,10 +162,14 @@ class Rest_API {
 			return $post;
 		}
 
-		$user_id   = get_current_user_id();
-		$is_author = $user_id && ( (int) $post->post_author === $user_id );
+		$user_id      = get_current_user_id();
+		$is_author    = $user_id && ( (int) $post->post_author === $user_id );
+		$is_co_author = $user_id && Co_Authors::is_co_author( $post->ID, $user_id );
 
-		if ( ! $is_author && ! current_user_can( 'edit_others_posts' ) ) {
+		$pto = get_post_type_object( $post->post_type );
+		$cap = $pto ? $pto->cap->edit_others_posts : 'edit_others_posts';
+
+		if ( ! $is_author && ! $is_co_author && ! current_user_can( $cap ) ) {
 			return new \WP_Error(
 				'rest_forbidden',
 				__( 'You do not have permission to manage co-authors for this post.', 'multi-author-posts' ),
@@ -255,7 +258,7 @@ class Rest_API {
 	 */
 	public static function get_invite( \WP_REST_Request $request ): \WP_REST_Response {
 		$post_id = (int) $request->get_param( 'post_id' );
-		return new \WP_REST_Response( array( 'invite_url' => Invite::get_invite_url( $post_id ) ), 200 );
+		return new \WP_REST_Response( Invite::get_invite_status( $post_id ), 200 );
 	}
 
 	/**
@@ -373,7 +376,6 @@ class Rest_API {
 				'description'       => 'Post ID.',
 				'type'              => 'integer',
 				'sanitize_callback' => 'absint',
-				'validate_callback' => fn( $v ) => is_numeric( $v ) && $v > 0,
 			),
 		);
 	}
@@ -389,7 +391,6 @@ class Rest_API {
 				'description'       => 'User ID.',
 				'type'              => 'integer',
 				'sanitize_callback' => 'absint',
-				'validate_callback' => fn( $v ) => is_numeric( $v ) && $v > 0,
 			),
 		);
 	}

@@ -65,7 +65,7 @@ describe( 'MultiAuthorPlugin', () => {
 		// Default: empty co-authors list, no invite URL.
 		apiFetch.mockImplementation( ( { path } ) => {
 			if ( path.includes( '/invite' ) ) {
-				return Promise.resolve( { invite_url: null } );
+				return Promise.resolve( { active: false } );
 			}
 			return Promise.resolve( [] );
 		} );
@@ -89,7 +89,7 @@ describe( 'MultiAuthorPlugin', () => {
 
 	it( 'renders co-author names after loading', async () => {
 		apiFetch.mockImplementation( ( { path } ) => {
-			if ( path.includes( '/invite' ) ) return Promise.resolve( { invite_url: null } );
+			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
 			return Promise.resolve( [ CO_AUTHOR ] );
 		} );
 
@@ -108,10 +108,10 @@ describe( 'MultiAuthorPlugin', () => {
 		);
 	} );
 
-	it( 'shows invite URL when one exists', async () => {
+	it( 'shows "active" state with Regenerate / Revoke when invite exists', async () => {
 		apiFetch.mockImplementation( ( { path } ) => {
 			if ( path.includes( '/invite' ) ) {
-				return Promise.resolve( { invite_url: 'http://example.com/?map_invite=abc123' } );
+				return Promise.resolve( { active: true, created: 1000, expires: 2000 } );
 			}
 			return Promise.resolve( [] );
 		} );
@@ -119,12 +119,42 @@ describe( 'MultiAuthorPlugin', () => {
 		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect(
-				screen.getByDisplayValue( 'http://example.com/?map_invite=abc123' )
+				screen.getByRole( 'button', { name: /regenerate invite link/i } )
 			).toBeInTheDocument()
 		);
+		expect( screen.getByRole( 'button', { name: /revoke/i } ) ).toBeInTheDocument();
 	} );
 
-	it( 'hides management controls for a co-author (non-author) user', async () => {
+	it( 'reveals the plaintext URL exactly once, after generate', async () => {
+		apiFetch.mockImplementation( ( { path, method } ) => {
+			if ( path.includes( '/invite' ) && method === 'POST' ) {
+				return Promise.resolve( { invite_url: 'http://example.com/?map_invite=plain' } );
+			}
+			if ( path.includes( '/invite' ) ) {
+				return Promise.resolve( { active: false } );
+			}
+			return Promise.resolve( [] );
+		} );
+
+		const user = userEvent.setup();
+		render( <MultiAuthorPlugin /> );
+
+		await waitFor( () =>
+			expect(
+				screen.getByRole( 'button', { name: /generate invite link/i } )
+			).toBeInTheDocument()
+		);
+
+		await act( async () => {
+			await user.click( screen.getByRole( 'button', { name: /generate invite link/i } ) );
+		} );
+
+		expect(
+			screen.getByDisplayValue( 'http://example.com/?map_invite=plain' )
+		).toBeInTheDocument();
+	} );
+
+	it( 'hides management controls for an unrelated logged-in user', async () => {
 		setupUseSelect( { currentUserId: 99, postAuthorId: AUTHOR_ID } );
 
 		render( <MultiAuthorPlugin /> );
@@ -137,10 +167,27 @@ describe( 'MultiAuthorPlugin', () => {
 		expect( screen.queryByRole( 'searchbox' ) ).toBeNull();
 	} );
 
+	it( 'shows management controls to a co-author of the post', async () => {
+		const CO_AUTHOR_ID = 99;
+		setupUseSelect( { currentUserId: CO_AUTHOR_ID, postAuthorId: AUTHOR_ID } );
+		apiFetch.mockImplementation( ( { path } ) => {
+			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
+			return Promise.resolve( [ { id: CO_AUTHOR_ID, name: 'Me', avatar: 'x' } ] );
+		} );
+
+		render( <MultiAuthorPlugin /> );
+		await waitFor( () =>
+			expect(
+				screen.getByRole( 'button', { name: /generate invite link/i } )
+			).toBeInTheDocument()
+		);
+		expect( screen.getByRole( 'searchbox' ) ).toBeInTheDocument();
+	} );
+
 	it( 'calls DELETE when Remove button is clicked', async () => {
 		apiFetch.mockImplementation( ( { path, method } ) => {
 			if ( method === 'DELETE' ) return Promise.resolve( {} );
-			if ( path.includes( '/invite' ) ) return Promise.resolve( { invite_url: null } );
+			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
 			return Promise.resolve( [ CO_AUTHOR ] );
 		} );
 

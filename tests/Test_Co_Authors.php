@@ -101,6 +101,36 @@ class Test_Co_Authors extends WP_UnitTestCase {
 		$this->assertTrue( Co_Authors::is_co_author( $this->post_id, $this->author_id ) );
 	}
 
+	public function test_concurrent_rmw_adds_do_not_drop_users(): void {
+		// Simulate two concurrent "read-modify-write" callers: each reads
+		// the list, both see it empty/identical, then both add *different*
+		// users. With one row per co-author, both additions must persist.
+		$second_user = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		$snapshot_a = Co_Authors::get_co_authors( $this->post_id );
+		$snapshot_b = Co_Authors::get_co_authors( $this->post_id );
+		$this->assertSame( $snapshot_a, $snapshot_b );
+
+		Co_Authors::add_co_author( $this->post_id, $this->user_id );
+		Co_Authors::add_co_author( $this->post_id, $second_user );
+
+		$co_authors = Co_Authors::get_co_authors( $this->post_id );
+		$this->assertContains( $this->user_id, $co_authors );
+		$this->assertContains( $second_user, $co_authors );
+	}
+
+	public function test_remove_leaves_others_in_place(): void {
+		$second_user = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		Co_Authors::add_co_author( $this->post_id, $this->user_id );
+		Co_Authors::add_co_author( $this->post_id, $second_user );
+
+		Co_Authors::remove_co_author( $this->post_id, $this->user_id );
+
+		$co_authors = Co_Authors::get_co_authors( $this->post_id );
+		$this->assertNotContains( $this->user_id, $co_authors );
+		$this->assertContains( $second_user, $co_authors );
+	}
+
 	public function test_multiple_co_authors(): void {
 		$second_user = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		Co_Authors::add_co_author( $this->post_id, $this->user_id );

@@ -12,7 +12,7 @@ namespace MultiAuthorPosts;
  */
 class Co_Authors {
 
-	const META_KEY = '_map_co_authors';
+	const META_KEY = '_map_co_author';
 
 	/**
 	 * Register post meta on init.
@@ -24,16 +24,18 @@ class Co_Authors {
 
 	/**
 	 * Register the co-authors post meta.
+	 *
+	 * Stored as one row per co-author (single = false) so concurrent adds
+	 * don't race via a shared serialized array.
 	 */
 	public static function register_meta(): void {
 		register_post_meta(
 			'',
 			self::META_KEY,
 			array(
-				'type'          => 'array',
-				'description'   => 'Co-author user IDs for this post.',
-				'single'        => true,
-				'default'       => array(),
+				'type'          => 'integer',
+				'description'   => 'Co-author user ID (one row per co-author).',
+				'single'        => false,
 				'show_in_rest'  => false,
 				'auth_callback' => function ( $allowed, $meta_key, $post_id ) {
 					return current_user_can( 'edit_post', $post_id );
@@ -49,11 +51,13 @@ class Co_Authors {
 	 * @return int[]
 	 */
 	public static function get_co_authors( int $post_id ): array {
-		$value = get_post_meta( $post_id, self::META_KEY, true );
-		if ( ! is_array( $value ) ) {
+		$values = get_post_meta( $post_id, self::META_KEY, false );
+		if ( ! is_array( $values ) ) {
 			return array();
 		}
-		return array_map( 'intval', $value );
+		$ids = array_map( 'intval', $values );
+		// Dedupe — concurrent inserts for the same user could produce duplicate rows.
+		return array_values( array_unique( $ids ) );
 	}
 
 	/**
@@ -80,14 +84,11 @@ class Co_Authors {
 			return true;
 		}
 
-		$co_authors = self::get_co_authors( $post_id );
-
-		if ( in_array( $user_id, $co_authors, true ) ) {
+		if ( self::is_co_author( $post_id, $user_id ) ) {
 			return true;
 		}
 
-		$co_authors[] = $user_id;
-		return (bool) update_post_meta( $post_id, self::META_KEY, $co_authors );
+		return (bool) add_post_meta( $post_id, self::META_KEY, $user_id, false );
 	}
 
 	/**
@@ -98,9 +99,7 @@ class Co_Authors {
 	 * @return bool Whether the operation succeeded.
 	 */
 	public static function remove_co_author( int $post_id, int $user_id ): bool {
-		$co_authors = self::get_co_authors( $post_id );
-		$filtered   = array_values( array_filter( $co_authors, fn( $id ) => $id !== $user_id ) );
-		return (bool) update_post_meta( $post_id, self::META_KEY, $filtered );
+		return delete_post_meta( $post_id, self::META_KEY, $user_id );
 	}
 
 	/**

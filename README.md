@@ -12,6 +12,19 @@ A WordPress plugin that allows multiple authors to edit a single post via shared
 - **Multisite support** -- Invited users are automatically added to the site with a subscriber role so they can access the editor.
 - **Author preservation** -- When a post's author is reassigned, the previous author is automatically kept as a co-author.
 
+## Co-author permissions
+
+Co-authors have the same management trust as the original post author. They can:
+
+- Add and remove other co-authors
+- Generate, copy, and revoke the shared invite link
+- Edit and read the post itself
+
+The only things they **cannot** do:
+
+- Reassign post authorship (requires `edit_others_posts`, enforced by WordPress core)
+- Delete the post (the `map_meta_cap` filter explicitly excludes `delete_post`)
+
 ## Requirements
 
 - WordPress 6.6+

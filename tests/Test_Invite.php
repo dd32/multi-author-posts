@@ -25,8 +25,15 @@ class Test_Invite extends WP_UnitTestCase {
 		$this->post_id   = self::factory()->post->create( array( 'post_author' => $this->author_id ) );
 	}
 
-	public function test_get_invite_url_returns_null_when_none_created(): void {
-		$this->assertNull( Invite::get_invite_url( $this->post_id ) );
+	private function extract_token( string $url ): string {
+		$query = wp_parse_url( $url, PHP_URL_QUERY );
+		parse_str( (string) $query, $args );
+		return (string) ( $args['map_invite'] ?? '' );
+	}
+
+	public function test_invite_status_inactive_when_none_created(): void {
+		$status = Invite::get_invite_status( $this->post_id );
+		$this->assertFalse( $status['active'] );
 	}
 
 	public function test_create_invite_url_returns_url_with_token(): void {
@@ -34,10 +41,13 @@ class Test_Invite extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'map_invite=', $url );
 	}
 
-	public function test_get_invite_url_matches_created_url(): void {
-		$created   = Invite::create_invite_url( $this->post_id );
-		$retrieved = Invite::get_invite_url( $this->post_id );
-		$this->assertSame( $created, $retrieved );
+	public function test_stored_meta_is_not_the_raw_token(): void {
+		$url    = Invite::create_invite_url( $this->post_id );
+		$token  = $this->extract_token( $url );
+		$stored = get_post_meta( $this->post_id, '_map_invite_token', true );
+
+		$this->assertNotSame( $token, $stored );
+		$this->assertSame( hash( 'sha256', $token ), $stored );
 	}
 
 	public function test_create_invite_url_generates_new_token_each_time(): void {
@@ -46,17 +56,19 @@ class Test_Invite extends WP_UnitTestCase {
 		$this->assertNotSame( $first, $second );
 	}
 
-	public function test_revoke_invite_removes_url(): void {
+	public function test_revoke_invite_clears_storage(): void {
 		Invite::create_invite_url( $this->post_id );
 		Invite::revoke_invite( $this->post_id );
-		$this->assertNull( Invite::get_invite_url( $this->post_id ) );
+
+		$this->assertFalse( Invite::get_invite_status( $this->post_id )['active'] );
+		$this->assertSame( '', get_post_meta( $this->post_id, '_map_invite_token', true ) );
 	}
 
 	public function test_get_post_by_valid_token(): void {
-		Invite::create_invite_url( $this->post_id );
-		$token = get_post_meta( $this->post_id, '_map_invite_token', true );
-		$post  = Invite::get_post_by_token( $token );
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
 
+		$post = Invite::get_post_by_token( $token );
 		$this->assertNotNull( $post );
 		$this->assertSame( $this->post_id, $post->ID );
 	}
@@ -69,9 +81,95 @@ class Test_Invite extends WP_UnitTestCase {
 		$this->assertNull( Invite::get_post_by_token( '' ) );
 	}
 
-	public function test_shared_invite_can_be_used_by_multiple_users(): void {
+	public function test_tampered_token_returns_null(): void {
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
+
+		$this->assertNull( Invite::get_post_by_token( substr( $token, 0, -1 ) ) );
+	}
+
+	public function test_get_post_by_token_resolves_custom_post_status(): void {
+		register_post_status(
+			'in-review',
+			array(
+				'label'                     => 'In Review',
+				'public'                    => false,
+				'internal'                  => false,
+				'exclude_from_search'       => true,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+			)
+		);
+
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
+
+		wp_update_post(
+			array(
+				'ID'          => $this->post_id,
+				'post_status' => 'in-review',
+			)
+		);
+
+		$post = Invite::get_post_by_token( $token );
+		$this->assertNotNull( $post );
+		$this->assertSame( $this->post_id, $post->ID );
+	}
+
+	public function test_get_post_by_token_does_not_resolve_trashed_post(): void {
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
+
+		wp_trash_post( $this->post_id );
+
+		$this->assertNull( Invite::get_post_by_token( $token ) );
+	}
+
+	public function test_token_expires_after_ttl(): void {
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
+
+		// Backdate creation well past the default 24h TTL.
+		update_post_meta( $this->post_id, '_map_invite_created', time() - ( 2 * DAY_IN_SECONDS ) );
+
+		$this->assertNull( Invite::get_post_by_token( $token ) );
+	}
+
+	public function test_token_within_ttl_is_accepted(): void {
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
+
+		update_post_meta( $this->post_id, '_map_invite_created', time() - HOUR_IN_SECONDS );
+
+		$this->assertNotNull( Invite::get_post_by_token( $token ) );
+	}
+
+	public function test_ttl_filter_can_shorten_expiry(): void {
+		$url   = Invite::create_invite_url( $this->post_id );
+		$token = $this->extract_token( $url );
+
+		update_post_meta( $this->post_id, '_map_invite_created', time() - ( 10 * MINUTE_IN_SECONDS ) );
+
+		$filter = fn() => 5 * MINUTE_IN_SECONDS;
+		add_filter( 'map_invite_ttl', $filter );
+		$result = Invite::get_post_by_token( $token );
+		remove_filter( 'map_invite_ttl', $filter );
+
+		$this->assertNull( $result );
+	}
+
+	public function test_expired_token_is_cleaned_up_on_lookup(): void {
 		Invite::create_invite_url( $this->post_id );
-		$token    = get_post_meta( $this->post_id, '_map_invite_token', true );
+		update_post_meta( $this->post_id, '_map_invite_created', time() - ( 2 * DAY_IN_SECONDS ) );
+
+		Invite::get_invite_status( $this->post_id );
+
+		$this->assertSame( '', get_post_meta( $this->post_id, '_map_invite_token', true ) );
+	}
+
+	public function test_shared_invite_can_be_used_by_multiple_users(): void {
+		$url      = Invite::create_invite_url( $this->post_id );
+		$token    = $this->extract_token( $url );
 		$user_one = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		$user_two = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 

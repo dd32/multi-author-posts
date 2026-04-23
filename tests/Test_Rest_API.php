@@ -93,7 +93,7 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$this->assertSame( 400, $response->get_status() );
 	}
 
-	public function test_add_co_author_directly_forbidden_for_co_author(): void {
+	public function test_co_author_can_add_other_co_authors(): void {
 		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
 		wp_set_current_user( $this->subscriber_id );
 
@@ -101,7 +101,24 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$request->set_param( 'user_id', $this->editor_id );
 		$response = rest_get_server()->dispatch( $request );
 
-		$this->assertSame( 403, $response->get_status() );
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( Co_Authors::is_co_author( $this->post_id, $this->editor_id ) );
+	}
+
+	public function test_co_author_can_remove_other_co_author(): void {
+		$another = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		Co_Authors::add_co_author( $this->post_id, $another );
+		wp_set_current_user( $this->subscriber_id );
+
+		$request  = new WP_REST_Request(
+			'DELETE',
+			'/multi-author-posts/v1/posts/' . $this->post_id . '/co-authors/' . $another
+		);
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( Co_Authors::is_co_author( $this->post_id, $another ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -138,14 +155,14 @@ class Test_Rest_API extends WP_UnitTestCase {
 	// Invite
 	// -------------------------------------------------------------------------
 
-	public function test_get_invite_returns_null_when_none_created(): void {
+	public function test_get_invite_reports_inactive_when_none_created(): void {
 		wp_set_current_user( $this->author_id );
 
 		$request  = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/invite' );
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 200, $response->get_status() );
-		$this->assertNull( $response->get_data()['invite_url'] );
+		$this->assertFalse( $response->get_data()['active'] );
 	}
 
 	public function test_create_invite_returns_url(): void {
@@ -167,17 +184,54 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 200, $response->get_status() );
-		$this->assertNull( Invite::get_invite_url( $this->post_id ) );
+		$this->assertFalse( Invite::get_invite_status( $this->post_id )['active'] );
 	}
 
-	public function test_invite_management_forbidden_for_co_author(): void {
+	public function test_co_author_can_manage_invites(): void {
 		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
 		wp_set_current_user( $this->subscriber_id );
 
 		$request  = new WP_REST_Request( 'POST', '/multi-author-posts/v1/posts/' . $this->post_id . '/invite' );
 		$response = rest_get_server()->dispatch( $request );
 
+		$this->assertSame( 200, $response->get_status() );
+	}
+
+	public function test_unrelated_subscriber_cannot_manage_invites(): void {
+		$other = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $other );
+
+		$request  = new WP_REST_Request( 'POST', '/multi-author-posts/v1/posts/' . $this->post_id . '/invite' );
+		$response = rest_get_server()->dispatch( $request );
+
 		$this->assertSame( 403, $response->get_status() );
+	}
+
+	public function test_cpt_specific_cap_is_checked(): void {
+		register_post_type(
+			'map_cpt',
+			array(
+				'public'          => true,
+				'capability_type' => array( 'map_thing', 'map_things' ),
+				'map_meta_cap'    => true,
+			)
+		);
+		$cpt_post = self::factory()->post->create(
+			array(
+				'post_type'   => 'map_cpt',
+				'post_author' => $this->author_id,
+			)
+		);
+
+		// Editor has edit_others_posts but NOT edit_others_map_things.
+		wp_set_current_user( $this->editor_id );
+
+		$request  = new WP_REST_Request( 'POST', '/multi-author-posts/v1/posts/' . $cpt_post . '/invite' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 403, $response->get_status() );
+
+		unregister_post_type( 'map_cpt' );
 	}
 
 	// -------------------------------------------------------------------------
