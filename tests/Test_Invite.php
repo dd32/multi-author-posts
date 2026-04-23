@@ -167,6 +167,49 @@ class Test_Invite extends WP_UnitTestCase {
 		$this->assertSame( '', get_post_meta( $this->post_id, '_map_invite_token', true ) );
 	}
 
+	public function test_invite_is_revoked_when_post_is_published(): void {
+		Invite::init();
+
+		$draft = self::factory()->post->create(
+			array(
+				'post_author' => $this->author_id,
+				'post_status' => 'draft',
+			)
+		);
+		Invite::create_invite_url( $draft );
+		$this->assertTrue( Invite::get_invite_status( $draft )['active'] );
+
+		wp_update_post(
+			array(
+				'ID'          => $draft,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->assertFalse( Invite::get_invite_status( $draft )['active'] );
+	}
+
+	public function test_publish_to_publish_does_not_revoke(): void {
+		Invite::init();
+
+		$published = self::factory()->post->create(
+			array(
+				'post_author' => $this->author_id,
+				'post_status' => 'publish',
+			)
+		);
+		Invite::create_invite_url( $published );
+
+		wp_update_post(
+			array(
+				'ID'         => $published,
+				'post_title' => 'edited',
+			)
+		);
+
+		$this->assertTrue( Invite::get_invite_status( $published )['active'] );
+	}
+
 	public function test_shared_invite_can_be_used_by_multiple_users(): void {
 		$url      = Invite::create_invite_url( $this->post_id );
 		$token    = $this->extract_token( $url );

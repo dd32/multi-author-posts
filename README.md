@@ -7,7 +7,7 @@ A WordPress plugin that allows multiple authors to edit a single post via shared
 ## Features
 
 - **Co-author management** -- Add or remove co-authors from any post via the block editor sidebar panel.
-- **Shared invite links** -- Generate a shareable URL that lets any registered user join as a co-author.
+- **Shared invite links** -- Generate a shareable URL that lets any registered user join as a co-author. Links expire after 24 hours and are automatically revoked when the post is published; existing co-authors keep their access.
 - **Capability-aware** -- Co-authors can edit and read their assigned posts without gaining broader site permissions.
 - **Multisite support** -- Invited users are automatically added to the site with a subscriber role so they can access the editor.
 - **Author preservation** -- When a post's author is reassigned, the previous author is automatically kept as a co-author.

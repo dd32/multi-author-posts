@@ -23,6 +23,20 @@ class Invite {
 	 */
 	public static function init(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle_invite_request' ) );
+		add_action( 'transition_post_status', array( __CLASS__, 'revoke_on_publish' ), 10, 3 );
+	}
+
+	/**
+	 * Auto-revoke an active invite when a post transitions to `publish`.
+	 *
+	 * Existing co-authors keep their access; the shared link simply stops
+	 * admitting new people. The author can regenerate a fresh link if more
+	 * collaborators need to be added post-publish.
+	 */
+	public static function revoke_on_publish( string $new_status, string $old_status, \WP_Post $post ): void {
+		if ( 'publish' === $new_status && 'publish' !== $old_status ) {
+			self::revoke_invite( $post->ID );
+		}
 	}
 
 	/**
