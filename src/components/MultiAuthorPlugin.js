@@ -9,6 +9,7 @@ import {
 	Button,
 	TextControl,
 	TextHighlight,
+	ToggleControl,
 	Spinner,
 	Notice,
 	SearchControl,
@@ -138,6 +139,72 @@ function DirectAdd( { postId, onAdd } ) {
 					{ __( 'No matching authors found.', 'multi-author-posts' ) }
 				</p>
 			) }
+		</VStack>
+	);
+}
+
+/**
+ * Per-post co-author settings (currently just: allow editing after publish).
+ *
+ * Visible to anyone who can see the panel, but only editors/admins can toggle.
+ * Other users see the read-only state via a disabled control.
+ */
+function SettingsSection( { postId } ) {
+	const [ allowPostPublishEdit, setAllowPostPublishEdit ] = useState( false );
+	const [ canEditSettings, setCanEditSettings ] = useState( false );
+	const [ isLoading, setIsLoading ] = useState( true );
+	const [ isSaving, setIsSaving ] = useState( false );
+
+	useEffect( () => {
+		apiFetch( { path: `${ NAMESPACE }/posts/${ postId }/settings` } )
+			.then( ( data ) => {
+				setAllowPostPublishEdit( !! data?.allow_post_publish_edit );
+				setCanEditSettings( !! data?.can_edit_settings );
+				setIsLoading( false );
+			} )
+			.catch( () => setIsLoading( false ) );
+	}, [ postId ] );
+
+	const handleToggle = useCallback(
+		( next ) => {
+			setAllowPostPublishEdit( next );
+			setIsSaving( true );
+			apiFetch( {
+				path: `${ NAMESPACE }/posts/${ postId }/settings`,
+				method: 'PUT',
+				data: { allow_post_publish_edit: next },
+			} )
+				.then( ( data ) => {
+					setAllowPostPublishEdit( !! data?.allow_post_publish_edit );
+					setIsSaving( false );
+				} )
+				.catch( () => {
+					// Revert on failure.
+					setAllowPostPublishEdit( ! next );
+					setIsSaving( false );
+				} );
+		},
+		[ postId ]
+	);
+
+	if ( isLoading || ! canEditSettings ) return null;
+
+	return (
+		<VStack spacing={ 2 } className="map-settings-section">
+			<ToggleControl
+				label={ __(
+					'Allow co-authors to edit after publish',
+					'multi-author-posts'
+				) }
+				help={ __(
+					'When off, co-authors lose edit access once the post is published. The post author and site editors keep full access either way.',
+					'multi-author-posts'
+				) }
+				checked={ allowPostPublishEdit }
+				disabled={ isSaving }
+				onChange={ handleToggle }
+				__nextHasNoMarginBottom
+			/>
 		</VStack>
 	);
 }
@@ -351,6 +418,7 @@ export default function MultiAuthorPlugin() {
 								postId={ postId }
 								onAdd={ setCoAuthors }
 							/>
+							<SettingsSection postId={ postId } />
 							<InviteSection postId={ postId } />
 						</>
 					) }

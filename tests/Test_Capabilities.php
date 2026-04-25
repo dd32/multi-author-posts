@@ -62,4 +62,44 @@ class Test_Capabilities extends WP_UnitTestCase {
 	public function test_original_author_can_still_edit_post(): void {
 		$this->assertTrue( user_can( $this->author_id, 'edit_post', $this->post_id ) );
 	}
+
+	public function test_co_author_loses_edit_access_when_post_is_published(): void {
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		wp_update_post( array( 'ID' => $this->post_id, 'post_status' => 'publish' ) );
+
+		$this->assertFalse( user_can( $this->subscriber_id, 'edit_post', $this->post_id ) );
+	}
+
+	public function test_co_author_keeps_edit_access_after_publish_when_opt_in_enabled(): void {
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		Co_Authors::set_post_publish_access( $this->post_id, true );
+		wp_update_post( array( 'ID' => $this->post_id, 'post_status' => 'publish' ) );
+
+		$this->assertTrue( user_can( $this->subscriber_id, 'edit_post', $this->post_id ) );
+	}
+
+	public function test_co_author_can_still_read_published_post(): void {
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		wp_update_post( array( 'ID' => $this->post_id, 'post_status' => 'publish' ) );
+
+		// read_post is unaffected by the post-publish edit gate.
+		$this->assertTrue( user_can( $this->subscriber_id, 'read_post', $this->post_id ) );
+	}
+
+	public function test_post_author_keeps_edit_access_after_publish(): void {
+		// The post's own author retains edit_post via core WP rules,
+		// regardless of the co-author post-publish flag.
+		wp_update_post( array( 'ID' => $this->post_id, 'post_status' => 'publish' ) );
+		$this->assertTrue( user_can( $this->author_id, 'edit_post', $this->post_id ) );
+	}
+
+	public function test_disabling_post_publish_access_removes_edit_after_publish(): void {
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		Co_Authors::set_post_publish_access( $this->post_id, true );
+		wp_update_post( array( 'ID' => $this->post_id, 'post_status' => 'publish' ) );
+		$this->assertTrue( user_can( $this->subscriber_id, 'edit_post', $this->post_id ) );
+
+		Co_Authors::set_post_publish_access( $this->post_id, false );
+		$this->assertFalse( user_can( $this->subscriber_id, 'edit_post', $this->post_id ) );
+	}
 }

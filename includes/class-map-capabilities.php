@@ -44,13 +44,28 @@ class Capabilities {
 			return $caps;
 		}
 
-		if ( Co_Authors::is_co_author( $post_id, $user_id ) ) {
-			// Returning an empty array grants the capability unconditionally,
-			// which is intentional here: co-authors are explicitly trusted for
-			// this specific post regardless of their site role.
-			return array();
+		if ( ! Co_Authors::is_co_author( $post_id, $user_id ) ) {
+			return $caps;
 		}
 
-		return $caps;
+		// Edit access is revoked on publish unless an editor/admin has opted in
+		// for this specific post. read_post stays unconditional — published
+		// posts are public anyway, and co-authors of unpublished posts retain
+		// the read access they were granted.
+		if ( 'edit_post' === $cap ) {
+			$post = get_post( $post_id );
+			if (
+				$post
+				&& 'publish' === $post->post_status
+				&& ! Co_Authors::allows_post_publish_access( $post_id )
+			) {
+				return $caps;
+			}
+		}
+
+		// Returning an empty array grants the capability unconditionally,
+		// which is intentional here: co-authors are explicitly trusted for
+		// this specific post regardless of their site role.
+		return array();
 	}
 }

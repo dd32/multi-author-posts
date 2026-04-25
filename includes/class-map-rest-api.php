@@ -18,6 +18,8 @@ namespace MultiAuthorPosts;
  * GET    /posts/<id>/invite                  Return whether a shared invite is active (manage caps required)
  * POST   /posts/<id>/invite                  Generate / refresh invite URL — plaintext returned once (manage caps required)
  * DELETE /posts/<id>/invite                  Revoke invite URL (manage caps required)
+ * GET    /posts/<id>/settings                Return per-post co-author settings (edit_post required)
+ * PUT    /posts/<id>/settings                Update per-post co-author settings (edit_others_posts required)
  */
 class Rest_API {
 
@@ -102,6 +104,35 @@ class Rest_API {
 			)
 		);
 
+		// Per-post co-author settings (e.g. allow editing after publish).
+		register_rest_route(
+			self::NAMESPACE,
+			'/posts/(?P<post_id>\d+)/settings',
+			array(
+				array(
+					'methods'             => \WP_REST_Server::READABLE,
+					'callback'            => array( __CLASS__, 'get_settings' ),
+					'permission_callback' => array( __CLASS__, 'can_edit_post' ),
+					'args'                => self::post_id_arg(),
+				),
+				array(
+					'methods'             => \WP_REST_Server::EDITABLE,
+					'callback'            => array( __CLASS__, 'update_settings' ),
+					'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+					'args'                => array_merge(
+						self::post_id_arg(),
+						array(
+							'allow_post_publish_edit' => array(
+								'description' => 'Whether co-authors retain edit access after the post is published.',
+								'type'        => 'boolean',
+								'required'    => true,
+							),
+						)
+					),
+				),
+			)
+		);
+
 		// Search site authors / editors for direct-add.
 		register_rest_route(
 			self::NAMESPACE,
@@ -173,6 +204,30 @@ class Rest_API {
 			return new \WP_Error(
 				'rest_forbidden',
 				__( 'You do not have permission to manage co-authors for this post.', 'multi-author-posts' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+		return true;
+	}
+
+	/**
+	 * Require post-type-specific edit_others_posts capability.
+	 *
+	 * Used to gate per-post co-author settings — co-authors and lone post
+	 * authors without edit_others_posts cannot toggle these.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return bool|\WP_Error
+	 */
+	public static function can_manage_settings( \WP_REST_Request $request ) {
+		$post = self::get_post_from_request( $request );
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+		if ( ! Co_Authors::current_user_can_manage_settings( $post->ID ) ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'You do not have permission to change co-author settings for this post.', 'multi-author-posts' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
@@ -283,6 +338,45 @@ class Rest_API {
 		$post_id = (int) $request->get_param( 'post_id' );
 		Invite::revoke_invite( $post_id );
 		return new \WP_REST_Response( array( 'revoked' => true ), 200 );
+	}
+
+	/**
+	 * GET /posts/<id>/settings
+	 *
+	 * Returns the per-post co-author settings, plus a flag indicating whether
+	 * the current user can change them.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response
+	 */
+	public static function get_settings( \WP_REST_Request $request ): \WP_REST_Response {
+		$post_id = (int) $request->get_param( 'post_id' );
+		return new \WP_REST_Response(
+			array(
+				'allow_post_publish_edit' => Co_Authors::allows_post_publish_access( $post_id ),
+				'can_edit_settings'       => Co_Authors::current_user_can_manage_settings( $post_id ),
+			),
+			200
+		);
+	}
+
+	/**
+	 * PUT /posts/<id>/settings
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response
+	 */
+	public static function update_settings( \WP_REST_Request $request ): \WP_REST_Response {
+		$post_id = (int) $request->get_param( 'post_id' );
+		$value   = (bool) $request->get_param( 'allow_post_publish_edit' );
+		Co_Authors::set_post_publish_access( $post_id, $value );
+		return new \WP_REST_Response(
+			array(
+				'allow_post_publish_edit' => Co_Authors::allows_post_publish_access( $post_id ),
+				'can_edit_settings'       => Co_Authors::current_user_can_manage_settings( $post_id ),
+			),
+			200
+		);
 	}
 
 	/**
