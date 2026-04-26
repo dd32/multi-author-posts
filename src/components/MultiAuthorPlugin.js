@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from '@wordpress/element';
-import { PluginDocumentSettingPanel } from '@wordpress/editor';
+import {
+	PluginDocumentSettingPanel,
+	store as editorStore,
+} from '@wordpress/editor';
 import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
-import { store as editorStore } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 import {
@@ -22,6 +24,10 @@ const NAMESPACE = '/multi-author-posts/v1';
 
 /**
  * A single co-author row.
+ * @param root0
+ * @param root0.author
+ * @param root0.canManage
+ * @param root0.onRemove
  */
 function AuthorCard( { author, canManage, onRemove } ) {
 	return (
@@ -44,7 +50,10 @@ function AuthorCard( { author, canManage, onRemove } ) {
 					onClick={ () => onRemove( author.id ) }
 					aria-label={
 						/* translators: %s: author display name */
-						sprintf( __( 'Remove %s', 'multi-author-posts' ), author.name )
+						sprintf(
+							__( 'Remove %s', 'multi-author-posts' ),
+							author.name
+						)
 					}
 				>
 					{ __( 'Remove', 'multi-author-posts' ) }
@@ -56,6 +65,9 @@ function AuthorCard( { author, canManage, onRemove } ) {
 
 /**
  * User search + direct-add UI (shown only when the current user can manage co-authors).
+ * @param root0
+ * @param root0.postId
+ * @param root0.onAdd
  */
 function DirectAdd( { postId, onAdd } ) {
 	const [ search, setSearch ] = useState( '' );
@@ -71,7 +83,9 @@ function DirectAdd( { postId, onAdd } ) {
 		setIsSearching( true );
 		const controller = new AbortController();
 		apiFetch( {
-			path: `${ NAMESPACE }/posts/${ postId }/suggested-authors?search=${ encodeURIComponent( search ) }`,
+			path: `${ NAMESPACE }/posts/${ postId }/suggested-authors?search=${ encodeURIComponent(
+				search
+			) }`,
 			signal: controller.signal,
 		} )
 			.then( ( data ) => {
@@ -104,7 +118,10 @@ function DirectAdd( { postId, onAdd } ) {
 				label={ __( 'Add existing author', 'multi-author-posts' ) }
 				value={ search }
 				onChange={ setSearch }
-				placeholder={ __( 'Search by name or email…', 'multi-author-posts' ) }
+				placeholder={ __(
+					'Search by name or email…',
+					'multi-author-posts'
+				) }
 			/>
 			{ isSearching && <Spinner /> }
 			{ suggestions.length > 0 && (
@@ -119,7 +136,12 @@ function DirectAdd( { postId, onAdd } ) {
 										width={ 28 }
 										height={ 28 }
 									/>
-									<span><TextHighlight text={ user.name } highlight={ search } /></span>
+									<span>
+										<TextHighlight
+											text={ user.name }
+											highlight={ search }
+										/>
+									</span>
 								</HStack>
 								<Button
 									variant="secondary"
@@ -133,17 +155,24 @@ function DirectAdd( { postId, onAdd } ) {
 					) ) }
 				</ul>
 			) }
-			{ search.length >= 2 && ! isSearching && suggestions.length === 0 && (
-				<p className="map-no-suggestions">
-					{ __( 'No matching authors found.', 'multi-author-posts' ) }
-				</p>
-			) }
+			{ search.length >= 2 &&
+				! isSearching &&
+				suggestions.length === 0 && (
+					<p className="map-no-suggestions">
+						{ __(
+							'No matching authors found.',
+							'multi-author-posts'
+						) }
+					</p>
+				) }
 		</VStack>
 	);
 }
 
 /**
  * Invite-link section (shown only when the current user can manage co-authors).
+ * @param root0
+ * @param root0.postId
  */
 function InviteSection( { postId } ) {
 	// Plaintext URL is only available in-memory, immediately after creation.
@@ -186,18 +215,24 @@ function InviteSection( { postId } ) {
 	}, [ postId ] );
 
 	const handleCopy = useCallback( () => {
-		if ( ! inviteUrl ) return;
+		if ( ! inviteUrl ) {
+			return;
+		}
 		navigator.clipboard?.writeText( inviteUrl ).then( () => {
 			setCopied( true );
 			setTimeout( () => setCopied( false ), 2000 );
 		} );
 	}, [ inviteUrl ] );
 
-	if ( isLoading ) return <Spinner />;
+	if ( isLoading ) {
+		return <Spinner />;
+	}
 
 	return (
 		<VStack spacing={ 2 } className="map-invite-section">
-			<strong>{ __( 'Shared invite link', 'multi-author-posts' ) }</strong>
+			<strong>
+				{ __( 'Shared invite link', 'multi-author-posts' ) }
+			</strong>
 			<p className="map-invite-description">
 				{ __(
 					'Anyone with this link who is registered on the network can join as a co-author. The link is valid for 24 hours and is only shown once — copy it now.',
@@ -213,7 +248,11 @@ function InviteSection( { postId } ) {
 						onClick={ ( e ) => e.target.select() }
 					/>
 					<HStack justify="flex-start" spacing={ 2 }>
-						<Button variant="secondary" onClick={ handleCopy } disabled={ copied }>
+						<Button
+							variant="secondary"
+							onClick={ handleCopy }
+							disabled={ copied }
+						>
 							{ copied
 								? __( 'Copied!', 'multi-author-posts' )
 								: __( 'Copy link', 'multi-author-posts' ) }
@@ -223,7 +262,10 @@ function InviteSection( { postId } ) {
 			) }
 			{ ! inviteUrl && isActive && (
 				<p className="map-invite-active">
-					{ __( 'An invite link is active. Regenerate to issue a new one (the previous link will stop working) or revoke it.', 'multi-author-posts' ) }
+					{ __(
+						'An invite link is active. Regenerate to issue a new one (the previous link will stop working) or revoke it.',
+						'multi-author-posts'
+					) }
 				</p>
 			) }
 			<HStack justify="flex-start" spacing={ 2 }>
@@ -233,7 +275,11 @@ function InviteSection( { postId } ) {
 						: __( 'Generate invite link', 'multi-author-posts' ) }
 				</Button>
 				{ isActive && (
-					<Button variant="tertiary" isDestructive onClick={ handleRevoke }>
+					<Button
+						variant="tertiary"
+						isDestructive
+						onClick={ handleRevoke }
+					>
 						{ __( 'Revoke', 'multi-author-posts' ) }
 					</Button>
 				) }
@@ -263,13 +309,14 @@ export default function MultiAuthorPlugin() {
 	// Post author and any existing co-author share the same management trust.
 	// The REST API enforces the same rule server-side.
 	const canManage =
-		!! currentUserId && (
-			currentUserId === postAuthorId ||
-			coAuthors.some( ( a ) => a.id === currentUserId )
-		);
+		!! currentUserId &&
+		( currentUserId === postAuthorId ||
+			coAuthors.some( ( a ) => a.id === currentUserId ) );
 
 	useEffect( () => {
-		if ( ! postId ) return;
+		if ( ! postId ) {
+			return;
+		}
 		setIsLoading( true );
 		apiFetch( { path: `${ NAMESPACE }/posts/${ postId }/co-authors` } )
 			.then( ( data ) => {
@@ -299,14 +346,19 @@ export default function MultiAuthorPlugin() {
 				.catch( ( err ) =>
 					setError(
 						err?.message ??
-							__( 'Could not remove co-author.', 'multi-author-posts' )
+							__(
+								'Could not remove co-author.',
+								'multi-author-posts'
+							)
 					)
 				);
 		},
 		[ postId ]
 	);
 
-	if ( ! postId ) return null;
+	if ( ! postId ) {
+		return null;
+	}
 
 	return (
 		<PluginDocumentSettingPanel

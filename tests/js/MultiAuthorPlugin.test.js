@@ -35,9 +35,16 @@ const { useSelect } = require( '@wordpress/data' );
 
 const POST_ID = 42;
 const AUTHOR_ID = 1;
-const CO_AUTHOR = { id: 2, name: 'Jane Doe', avatar: 'http://example.com/avatar.jpg' };
+const CO_AUTHOR = {
+	id: 2,
+	name: 'Jane Doe',
+	avatar: 'http://example.com/avatar.jpg',
+};
 
-function setupUseSelect( { currentUserId = AUTHOR_ID, postAuthorId = AUTHOR_ID } = {} ) {
+function setupUseSelect( {
+	currentUserId = AUTHOR_ID,
+	postAuthorId = AUTHOR_ID,
+} = {} ) {
 	useSelect.mockImplementation( ( selector ) =>
 		selector( ( storeName ) => {
 			const map = {
@@ -76,20 +83,26 @@ describe( 'MultiAuthorPlugin', () => {
 	it( 'renders the Co-Authors panel heading', async () => {
 		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
-			expect( screen.getByRole( 'heading', { name: /co-authors/i } ) ).toBeInTheDocument()
+			expect(
+				screen.getByRole( 'heading', { name: /co-authors/i } )
+			).toBeInTheDocument()
 		);
 	} );
 
 	it( 'shows "No co-authors yet" when the list is empty', async () => {
 		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
-			expect( screen.getByText( /no co-authors yet/i ) ).toBeInTheDocument()
+			expect(
+				screen.getByText( /no co-authors yet/i )
+			).toBeInTheDocument()
 		);
 	} );
 
 	it( 'renders co-author names after loading', async () => {
 		apiFetch.mockImplementation( ( { path } ) => {
-			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
+			if ( path.includes( '/invite' ) ) {
+				return Promise.resolve( { active: false } );
+			}
 			return Promise.resolve( [ CO_AUTHOR ] );
 		} );
 
@@ -111,7 +124,11 @@ describe( 'MultiAuthorPlugin', () => {
 	it( 'shows "active" state with Regenerate / Revoke when invite exists', async () => {
 		apiFetch.mockImplementation( ( { path } ) => {
 			if ( path.includes( '/invite' ) ) {
-				return Promise.resolve( { active: true, created: 1000, expires: 2000 } );
+				return Promise.resolve( {
+					active: true,
+					created: 1000,
+					expires: 2000,
+				} );
 			}
 			return Promise.resolve( [] );
 		} );
@@ -119,16 +136,22 @@ describe( 'MultiAuthorPlugin', () => {
 		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			expect(
-				screen.getByRole( 'button', { name: /regenerate invite link/i } )
+				screen.getByRole( 'button', {
+					name: /regenerate invite link/i,
+				} )
 			).toBeInTheDocument()
 		);
-		expect( screen.getByRole( 'button', { name: /revoke/i } ) ).toBeInTheDocument();
+		expect(
+			screen.getByRole( 'button', { name: /revoke/i } )
+		).toBeInTheDocument();
 	} );
 
 	it( 'reveals the plaintext URL exactly once, after generate', async () => {
 		apiFetch.mockImplementation( ( { path, method } ) => {
 			if ( path.includes( '/invite' ) && method === 'POST' ) {
-				return Promise.resolve( { invite_url: 'http://example.com/?map_invite=plain' } );
+				return Promise.resolve( {
+					invite_url: 'http://example.com/?map_invite=plain',
+				} );
 			}
 			if ( path.includes( '/invite' ) ) {
 				return Promise.resolve( { active: false } );
@@ -146,7 +169,9 @@ describe( 'MultiAuthorPlugin', () => {
 		);
 
 		await act( async () => {
-			await user.click( screen.getByRole( 'button', { name: /generate invite link/i } ) );
+			await user.click(
+				screen.getByRole( 'button', { name: /generate invite link/i } )
+			);
 		} );
 
 		expect(
@@ -160,19 +185,30 @@ describe( 'MultiAuthorPlugin', () => {
 		render( <MultiAuthorPlugin /> );
 		await waitFor( () =>
 			// Co-authors list loads
-			expect( screen.queryByText( /no co-authors yet/i ) ).toBeInTheDocument()
+			expect(
+				screen.queryByText( /no co-authors yet/i )
+			).toBeInTheDocument()
 		);
 
-		expect( screen.queryByRole( 'button', { name: /generate invite link/i } ) ).toBeNull();
+		expect(
+			screen.queryByRole( 'button', { name: /generate invite link/i } )
+		).toBeNull();
 		expect( screen.queryByRole( 'searchbox' ) ).toBeNull();
 	} );
 
 	it( 'shows management controls to a co-author of the post', async () => {
 		const CO_AUTHOR_ID = 99;
-		setupUseSelect( { currentUserId: CO_AUTHOR_ID, postAuthorId: AUTHOR_ID } );
+		setupUseSelect( {
+			currentUserId: CO_AUTHOR_ID,
+			postAuthorId: AUTHOR_ID,
+		} );
 		apiFetch.mockImplementation( ( { path } ) => {
-			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
-			return Promise.resolve( [ { id: CO_AUTHOR_ID, name: 'Me', avatar: 'x' } ] );
+			if ( path.includes( '/invite' ) ) {
+				return Promise.resolve( { active: false } );
+			}
+			return Promise.resolve( [
+				{ id: CO_AUTHOR_ID, name: 'Me', avatar: 'x' },
+			] );
 		} );
 
 		render( <MultiAuthorPlugin /> );
@@ -186,8 +222,12 @@ describe( 'MultiAuthorPlugin', () => {
 
 	it( 'calls DELETE when Remove button is clicked', async () => {
 		apiFetch.mockImplementation( ( { path, method } ) => {
-			if ( method === 'DELETE' ) return Promise.resolve( {} );
-			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
+			if ( method === 'DELETE' ) {
+				return Promise.resolve( {} );
+			}
+			if ( path.includes( '/invite' ) ) {
+				return Promise.resolve( { active: false } );
+			}
 			return Promise.resolve( [ CO_AUTHOR ] );
 		} );
 
@@ -199,13 +239,17 @@ describe( 'MultiAuthorPlugin', () => {
 		);
 
 		await act( async () => {
-			await user.click( screen.getByRole( 'button', { name: /remove jane doe/i } ) );
+			await user.click(
+				screen.getByRole( 'button', { name: /remove jane doe/i } )
+			);
 		} );
 
 		expect( apiFetch ).toHaveBeenCalledWith(
 			expect.objectContaining( {
 				method: 'DELETE',
-				path: expect.stringContaining( `/co-authors/${ CO_AUTHOR.id }` ),
+				path: expect.stringContaining(
+					`/co-authors/${ CO_AUTHOR.id }`
+				),
 			} )
 		);
 	} );
