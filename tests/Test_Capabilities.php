@@ -23,7 +23,12 @@ class Test_Capabilities extends WP_UnitTestCase {
 		parent::set_up();
 		$this->author_id     = self::factory()->user->create( array( 'role' => 'author' ) );
 		$this->subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
-		$this->post_id       = self::factory()->post->create( array( 'post_author' => $this->author_id ) );
+		// Default to a draft so the publish-gate doesn't interfere with tests
+		// that aren't specifically about post-publish behavior.
+		$this->post_id       = self::factory()->post->create( array(
+			'post_author' => $this->author_id,
+			'post_status' => 'draft',
+		) );
 	}
 
 	public function test_co_author_can_edit_post(): void {

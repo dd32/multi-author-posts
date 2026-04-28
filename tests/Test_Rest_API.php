@@ -27,7 +27,12 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$this->author_id     = self::factory()->user->create( array( 'role' => 'author' ) );
 		$this->editor_id     = self::factory()->user->create( array( 'role' => 'editor' ) );
 		$this->subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
-		$this->post_id       = self::factory()->post->create( array( 'post_author' => $this->author_id ) );
+		// Default to a draft so the post-publish co-author gate doesn't
+		// interfere with REST tests that aren't about publish behavior.
+		$this->post_id       = self::factory()->post->create( array(
+			'post_author' => $this->author_id,
+			'post_status' => 'draft',
+		) );
 	}
 
 	// -------------------------------------------------------------------------
