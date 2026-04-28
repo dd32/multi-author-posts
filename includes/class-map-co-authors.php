@@ -12,7 +12,8 @@ namespace MultiAuthorPosts;
  */
 class Co_Authors {
 
-	const META_KEY = '_map_co_author';
+	const META_KEY                     = '_map_co_author';
+	const POST_PUBLISH_ACCESS_META_KEY = '_map_co_author_post_publish_access';
 
 	/**
 	 * Register post meta on init.
@@ -42,6 +43,65 @@ class Co_Authors {
 				},
 			)
 		);
+
+		register_post_meta(
+			'',
+			self::POST_PUBLISH_ACCESS_META_KEY,
+			array(
+				'type'          => 'boolean',
+				'description'   => 'Whether co-authors retain edit access after the post is published.',
+				'single'        => true,
+				'show_in_rest'  => false,
+				'auth_callback' => function ( $allowed, $meta_key, $post_id ) {
+					return self::current_user_can_manage_settings( (int) $post_id );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Whether co-authors retain edit access on a post once it is published.
+	 *
+	 * Defaults to false: publishing strips co-author edit access unless an
+	 * editor/admin opts in for the specific post.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public static function allows_post_publish_access( int $post_id ): bool {
+		return (bool) get_post_meta( $post_id, self::POST_PUBLISH_ACCESS_META_KEY, true );
+	}
+
+	/**
+	 * Set the post-publish co-author access flag.
+	 *
+	 * @param int  $post_id Post ID.
+	 * @param bool $allowed Whether co-authors retain edit access after publish.
+	 */
+	public static function set_post_publish_access( int $post_id, bool $allowed ): void {
+		if ( $allowed ) {
+			update_post_meta( $post_id, self::POST_PUBLISH_ACCESS_META_KEY, '1' );
+		} else {
+			delete_post_meta( $post_id, self::POST_PUBLISH_ACCESS_META_KEY );
+		}
+	}
+
+	/**
+	 * Whether the current user can change co-author settings for a post.
+	 *
+	 * Gated on the post-type-specific edit_others_posts capability so that
+	 * co-authors and lone post authors (e.g. an Author role) cannot toggle
+	 * settings — only real site editors and admins.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public static function current_user_can_manage_settings( int $post_id ): bool {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return false;
+		}
+		$pto = get_post_type_object( $post->post_type );
+		$cap = $pto ? $pto->cap->edit_others_posts : 'edit_others_posts';
+		return current_user_can( $cap );
 	}
 
 	/**

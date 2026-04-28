@@ -69,10 +69,16 @@ function setupUseSelect( {
 describe( 'MultiAuthorPlugin', () => {
 	beforeEach( () => {
 		setupUseSelect();
-		// Default: empty co-authors list, no invite URL.
+		// Default: empty co-authors list, no invite URL, settings not editable.
 		apiFetch.mockImplementation( ( { path } ) => {
 			if ( path.includes( '/invite' ) ) {
 				return Promise.resolve( { active: false } );
+			}
+			if ( path.includes( '/settings' ) ) {
+				return Promise.resolve( {
+					allow_post_publish_edit: false,
+					can_edit_settings: false,
+				} );
 			}
 			return Promise.resolve( [] );
 		} );
@@ -218,6 +224,83 @@ describe( 'MultiAuthorPlugin', () => {
 			).toBeInTheDocument()
 		);
 		expect( screen.getByRole( 'searchbox' ) ).toBeInTheDocument();
+	} );
+
+	it( 'hides the post-publish-edit toggle when current user cannot edit settings', async () => {
+		// Default mock returns can_edit_settings: false.
+		render( <MultiAuthorPlugin /> );
+		await waitFor( () =>
+			expect(
+				screen.getByRole( 'button', { name: /generate invite link/i } )
+			).toBeInTheDocument()
+		);
+
+		expect(
+			screen.queryByRole( 'checkbox', { name: /allow co-authors to edit after publish/i } )
+		).toBeNull();
+	} );
+
+	it( 'shows the post-publish-edit toggle to editors and reflects the current value', async () => {
+		apiFetch.mockImplementation( ( { path } ) => {
+			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
+			if ( path.includes( '/settings' ) ) {
+				return Promise.resolve( {
+					allow_post_publish_edit: true,
+					can_edit_settings: true,
+				} );
+			}
+			return Promise.resolve( [] );
+		} );
+
+		render( <MultiAuthorPlugin /> );
+
+		await waitFor( () =>
+			expect(
+				screen.getByRole( 'checkbox', { name: /allow co-authors to edit after publish/i } )
+			).toBeChecked()
+		);
+	} );
+
+	it( 'persists the toggle change via PUT /settings', async () => {
+		apiFetch.mockImplementation( ( { path, method } ) => {
+			if ( path.includes( '/invite' ) ) return Promise.resolve( { active: false } );
+			if ( path.includes( '/settings' ) && method === 'PUT' ) {
+				return Promise.resolve( {
+					allow_post_publish_edit: true,
+					can_edit_settings: true,
+				} );
+			}
+			if ( path.includes( '/settings' ) ) {
+				return Promise.resolve( {
+					allow_post_publish_edit: false,
+					can_edit_settings: true,
+				} );
+			}
+			return Promise.resolve( [] );
+		} );
+
+		const user = userEvent.setup();
+		render( <MultiAuthorPlugin /> );
+
+		await waitFor( () =>
+			expect(
+				screen.getByRole( 'checkbox', { name: /allow co-authors to edit after publish/i } )
+			).not.toBeChecked()
+		);
+
+		await act( async () => {
+			await user.click(
+				screen.getByRole( 'checkbox', { name: /allow co-authors to edit after publish/i } )
+			);
+		} );
+
+		expect( apiFetch ).toHaveBeenCalledWith(
+			expect.objectContaining( {
+				method: 'PUT',
+				path: expect.stringContaining( '/settings' ),
+				data: { allow_post_publish_edit: true },
+			} )
+		);
 	} );
 
 	it( 'calls DELETE when Remove button is clicked', async () => {

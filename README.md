@@ -9,6 +9,7 @@ A WordPress plugin that allows multiple authors to edit a single post via shared
 - **Co-author management** -- Add or remove co-authors from any post via the block editor sidebar panel.
 - **Shared invite links** -- Generate a shareable URL that lets any registered user join as a co-author. Links expire after 24 hours and are automatically revoked when the post is published; existing co-authors keep their access.
 - **Capability-aware** -- Co-authors can edit and read their assigned posts without gaining broader site permissions.
+- **Post-publish edit gate** -- Co-authors lose edit access once the post is published. Site editors and admins can opt in per-post to keep co-author access after publish.
 - **Multisite support** -- Invited users are automatically added to the site with a subscriber role so they can access the editor.
 - **Author preservation** -- When a post's author is reassigned, the previous author is automatically kept as a co-author.
 
@@ -24,6 +25,11 @@ The only things they **cannot** do:
 
 - Reassign post authorship (requires `edit_others_posts`, enforced by WordPress core)
 - Delete the post (the `map_meta_cap` filter explicitly excludes `delete_post`)
+- Change the per-post "Allow co-authors to edit after publish" setting (requires `edit_others_posts`)
+
+## Editing after publish
+
+By default, publishing a post revokes co-authors' edit access — only the post author and site editors/admins can continue editing. Site editors and administrators can flip this per-post via the **"Allow co-authors to edit after publish"** toggle in the Co-Authors sidebar panel. Co-authors and Author-role post authors do not see this toggle.
 
 ## Requirements
 

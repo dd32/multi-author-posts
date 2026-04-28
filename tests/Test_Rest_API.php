@@ -27,7 +27,12 @@ class Test_Rest_API extends WP_UnitTestCase {
 		$this->author_id     = self::factory()->user->create( array( 'role' => 'author' ) );
 		$this->editor_id     = self::factory()->user->create( array( 'role' => 'editor' ) );
 		$this->subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
-		$this->post_id       = self::factory()->post->create( array( 'post_author' => $this->author_id ) );
+		// Default to a draft so the post-publish co-author gate doesn't
+		// interfere with REST tests that aren't about publish behavior.
+		$this->post_id       = self::factory()->post->create( array(
+			'post_author' => $this->author_id,
+			'post_status' => 'draft',
+		) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -311,6 +316,93 @@ class Test_Rest_API extends WP_UnitTestCase {
 
 		$ids = array_column( $response->get_data(), 'id' );
 		$this->assertContains( $target, $ids );
+	}
+
+	// -------------------------------------------------------------------------
+	// Settings (post-publish co-author access)
+	// -------------------------------------------------------------------------
+
+	public function test_get_settings_returns_default_off_for_post_author(): void {
+		wp_set_current_user( $this->author_id );
+
+		$request  = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$data = $response->get_data();
+		$this->assertFalse( $data['allow_post_publish_edit'] );
+		// The post author here is the Author role, which lacks edit_others_posts.
+		$this->assertFalse( $data['can_edit_settings'] );
+	}
+
+	public function test_get_settings_reports_can_edit_settings_for_editor(): void {
+		wp_set_current_user( $this->editor_id );
+
+		$request  = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['can_edit_settings'] );
+	}
+
+	public function test_get_settings_visible_to_co_authors(): void {
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		wp_set_current_user( $this->subscriber_id );
+
+		$request  = new WP_REST_Request( 'GET', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['can_edit_settings'] );
+	}
+
+	public function test_update_settings_as_editor(): void {
+		wp_set_current_user( $this->editor_id );
+
+		$request = new WP_REST_Request( 'PUT', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$request->set_param( 'allow_post_publish_edit', true );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['allow_post_publish_edit'] );
+		$this->assertTrue( Co_Authors::allows_post_publish_access( $this->post_id ) );
+	}
+
+	public function test_update_settings_forbidden_for_post_author_without_edit_others_posts(): void {
+		// Author role: has edit_post for own posts, but NOT edit_others_posts.
+		wp_set_current_user( $this->author_id );
+
+		$request = new WP_REST_Request( 'PUT', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$request->set_param( 'allow_post_publish_edit', true );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 403, $response->get_status() );
+		$this->assertFalse( Co_Authors::allows_post_publish_access( $this->post_id ) );
+	}
+
+	public function test_update_settings_forbidden_for_co_author(): void {
+		Co_Authors::add_co_author( $this->post_id, $this->subscriber_id );
+		wp_set_current_user( $this->subscriber_id );
+
+		$request = new WP_REST_Request( 'PUT', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$request->set_param( 'allow_post_publish_edit', true );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 403, $response->get_status() );
+		$this->assertFalse( Co_Authors::allows_post_publish_access( $this->post_id ) );
+	}
+
+	public function test_update_settings_can_disable_after_enabling(): void {
+		wp_set_current_user( $this->editor_id );
+		Co_Authors::set_post_publish_access( $this->post_id, true );
+
+		$request = new WP_REST_Request( 'PUT', '/multi-author-posts/v1/posts/' . $this->post_id . '/settings' );
+		$request->set_param( 'allow_post_publish_edit', false );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['allow_post_publish_edit'] );
+		$this->assertFalse( Co_Authors::allows_post_publish_access( $this->post_id ) );
 	}
 
 	public function test_editor_can_manage_co_authors_via_edit_others_posts(): void {

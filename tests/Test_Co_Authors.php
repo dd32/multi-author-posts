@@ -131,6 +131,27 @@ class Test_Co_Authors extends WP_UnitTestCase {
 		$this->assertContains( $second_user, $co_authors );
 	}
 
+	public function test_post_publish_access_defaults_to_false(): void {
+		$this->assertFalse( Co_Authors::allows_post_publish_access( $this->post_id ) );
+	}
+
+	public function test_set_post_publish_access_round_trips(): void {
+		Co_Authors::set_post_publish_access( $this->post_id, true );
+		$this->assertTrue( Co_Authors::allows_post_publish_access( $this->post_id ) );
+
+		Co_Authors::set_post_publish_access( $this->post_id, false );
+		$this->assertFalse( Co_Authors::allows_post_publish_access( $this->post_id ) );
+	}
+
+	public function test_current_user_can_manage_settings_requires_edit_others_posts(): void {
+		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $editor );
+		$this->assertTrue( Co_Authors::current_user_can_manage_settings( $this->post_id ) );
+
+		wp_set_current_user( $this->author_id );
+		$this->assertFalse( Co_Authors::current_user_can_manage_settings( $this->post_id ) );
+	}
+
 	public function test_multiple_co_authors(): void {
 		$second_user = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		Co_Authors::add_co_author( $this->post_id, $this->user_id );
