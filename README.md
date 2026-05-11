@@ -33,7 +33,7 @@ By default, publishing a post revokes co-authors' edit access — only the post 
 
 ## Requirements
 
-- WordPress 6.6+
+- WordPress 7.1+ (real-time collaborative editing was pulled from 7.0)
 - PHP 7.4+
 - Node.js 20+ (for development)
 

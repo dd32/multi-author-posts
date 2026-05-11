@@ -3,8 +3,8 @@
  * Plugin Name: Multi-Author Posts
  * Plugin URI:  https://github.com/dd32/multi-author-posts
  * Description: Allow multiple authors to edit a single WordPress post via a shared invite link. Compatible with WordPress collaborative editing.
- * Version:     1.0.0
- * Requires at least: 6.6
+ * Version:     0.1
+ * Requires at least: 7.1
  * Requires PHP: 7.4
  * Author:      dd32
  * License:     GPL-2.0-or-later
