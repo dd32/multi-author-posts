@@ -8,7 +8,7 @@
  * @package MultiAuthorPosts
  */
 
-namespace MultiAuthorPosts;
+namespace dd32\WordPress\MultiAuthorPosts;
 
 /**
  * Handles invite-token generation and invite-URL acceptance.

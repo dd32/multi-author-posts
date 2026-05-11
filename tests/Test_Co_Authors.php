@@ -5,13 +5,13 @@
  * @package MultiAuthorPosts
  */
 
-namespace MultiAuthorPosts\Tests;
+namespace dd32\WordPress\MultiAuthorPosts\Tests;
 
-use MultiAuthorPosts\Co_Authors;
+use dd32\WordPress\MultiAuthorPosts\Co_Authors;
 use WP_UnitTestCase;
 
 /**
- * @covers \MultiAuthorPosts\Co_Authors
+ * @covers \dd32\WordPress\MultiAuthorPosts\Co_Authors
  */
 class Test_Co_Authors extends WP_UnitTestCase {
 

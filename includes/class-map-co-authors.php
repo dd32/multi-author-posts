@@ -5,7 +5,7 @@
  * @package MultiAuthorPosts
  */
 
-namespace MultiAuthorPosts;
+namespace dd32\WordPress\MultiAuthorPosts;
 
 /**
  * Manages the list of co-authors stored against each post.

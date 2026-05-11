@@ -5,7 +5,7 @@
  * @package MultiAuthorPosts
  */
 
-namespace MultiAuthorPosts;
+namespace dd32\WordPress\MultiAuthorPosts;
 
 /**
  * Hooks into WordPress capability checks to grant co-authors permission

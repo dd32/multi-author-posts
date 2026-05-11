@@ -5,15 +5,15 @@
  * @package MultiAuthorPosts
  */
 
-namespace MultiAuthorPosts\Tests;
+namespace dd32\WordPress\MultiAuthorPosts\Tests;
 
-use MultiAuthorPosts\Co_Authors;
-use MultiAuthorPosts\Invite;
+use dd32\WordPress\MultiAuthorPosts\Co_Authors;
+use dd32\WordPress\MultiAuthorPosts\Invite;
 use WP_UnitTestCase;
 use WP_REST_Request;
 
 /**
- * @covers \MultiAuthorPosts\Rest_API
+ * @covers \dd32\WordPress\MultiAuthorPosts\Rest_API
  */
 class Test_Rest_API extends WP_UnitTestCase {
 

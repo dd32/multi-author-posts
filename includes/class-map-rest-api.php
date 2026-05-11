@@ -5,7 +5,7 @@
  * @package MultiAuthorPosts
  */
 
-namespace MultiAuthorPosts;
+namespace dd32\WordPress\MultiAuthorPosts;
 
 /**
  * Registers and handles all /multi-author-posts/v1/ REST routes.
